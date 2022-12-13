@@ -77,8 +77,21 @@ RemoveEnvironmentVariable("_JAVA_OPTIONS")
 windowWidth = 250
 windowHeight = 250
 
+; added by ysmjp
+ExamineDesktops()
+
+Procedure TryToCenterTheWindow(window)
+  ; not 100% centered on Y axis because of titlebar
+  Protected xPos = (DesktopWidth(0) / 2) - (WindowWidth(window) / 2)
+  Protected yPos = (DesktopHeight(0) / 2) - (WindowHeight(window) / 2) 
+  
+  ResizeWindow(window, xPos, yPos, #PB_Ignore, #PB_Ignore)
+EndProcedure
+
 If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Minecraft Launcher")
 
+  TryToCenterTheWindow(0)
+  
   gadgetsWidth = windowWidth - 10
   gadgetsHeight = 25
   gadgetsIndent = 5
