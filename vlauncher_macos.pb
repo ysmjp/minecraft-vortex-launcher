@@ -19,11 +19,11 @@ Define.i saveLaunchString, versionsTypeGadget, saveLaunchStringGadget, launchStr
 Define.i argsTextGadget, javaBinaryPathTextGadget, downloadThreadsTextGadget, downloadAllFilesGadget
 Define.i gadgetsWidth, gadgetsHeight, gadgetsIndent, windowWidth, windowHeight
 Define.i listOfFiles, jsonFile, jsonObject, jsonObjectObjects, fileSize, jsonJarMember, jsonArgumentsArray, jsonArrayElement, inheritsJson, clientSize
-Define.i releaseTimeMember, releaseTime, jsonJvmArray, loggingMember, loggingClientMember, loggingFileMember, logConfSize
+Define.i releaseTimeMember, releaseTime, jsonJvmArray
 
 Define.s playerName, ramAmount, clientVersion, javaBinaryPath, fullLaunchString, assetsIndex, clientUrl, fileHash, versionToDownload
 Define.s assetsIndex, clientMainClass, clientArguments, inheritsClientJar, customLaunchArguments, clientJarFile, nativesPath, librariesString
-Define.s uuid, jvmArguments, logConfId, logConfUrl, logConfArgument
+Define.s uuid, jvmArguments
 
 Define.i downloadThread, downloadMissingLibraries, jsonArgumentsMember, jsonArgumentsModernMember, jsonInheritsFromMember
 Define.i downloadMissingLibrariesGadget, downloadThreadsGadget, asyncDownloadGadget, saveSettingsButton, useCustomJavaGadget, useCustomParamsGadget, keepLauncherOpenGadget
@@ -42,7 +42,7 @@ Define.i useCustomJavaDefault = 0
 Define.i useCustomParamsDefault = 0
 Define.i keepLauncherOpenDefault = 0
 
-Define.s launcherVersion = "1.1.18"
+Define.s launcherVersion = "1.1.15"
 Define.s launcherDeveloper = "Kron4ek"
 
 Declare assetsToResources(assetsIndex.s)
@@ -119,7 +119,6 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
           librariesString = ""
           clientArguments = ""
           jvmArguments = ""
-          logConfArgument = ""
 
           If FileSize("/Library/Internet Plug-ins/JavaAppletPlugin.plugin/Contents/Home/bin/java") > 0
             javaBinaryPath = "/Library/Internet Plug-ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
@@ -254,6 +253,8 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
                     If releaseTimeMember
                       releaseTime = Val(StringField(GetJSONString(releaseTimeMember), 1, "-")) * 365 + Val(StringField(GetJSONString(releaseTimeMember), 2, "-")) * 30
                     EndIf
+
+                    FreeJSON(inheritsJson)
                   Else
                     MessageRequester("Error", inheritsClientJar + ".json file is missing!") : Break
                   EndIf
@@ -265,28 +266,6 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
                   Else
                     assetsIndex = "legacy"
                   EndIf
-                EndIf
-
-                If jsonInheritsFromMember And inheritsJson
-                  loggingMember = GetJSONMember(inheritsJsonObject, "logging")
-                Else
-                  loggingMember = GetJSONMember(jsonObject, "logging")
-                EndIf
-
-                If loggingMember
-                  loggingClientMember = GetJSONMember(loggingMember, "client")
-
-                  If loggingClientMember
-                    loggingFileMember = GetJSONMember(loggingClientMember, "file")
-
-                    If loggingFileMember
-                      logConfArgument = "-Dlog4j.configurationFile=assets/log_configs/" + GetJSONString(GetJSONMember(loggingFileMember, "id"))
-                    EndIf
-                  EndIf
-                EndIf
-
-                If inheritsJson
-                  FreeJSON(inheritsJson)
                 EndIf
 
                 If FileSize(clientJarFile) > 0
@@ -320,7 +299,7 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
                     customLaunchArguments = ReadPreferenceString("LaunchArguments", customLaunchArgumentsDefault)
                   EndIf
 
-                  fullLaunchString = "-Xmx" + ramAmount + "M " + customLaunchArguments + " -Dlog4j2.formatMsgNoLookups=true " + logConfArgument + " " + jvmArguments + " " + clientMainClass + " " + clientArguments
+                  fullLaunchString = "-Xmx" + ramAmount + "M " + customLaunchArguments + " " + jvmArguments + " " + clientMainClass + " " + clientArguments
 
                   fullLaunchString = ReplaceString(fullLaunchString, "${auth_player_name}", playerName)
                   fullLaunchString = ReplaceString(fullLaunchString, "${version_name}", clientVersion)
@@ -328,8 +307,6 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
                   fullLaunchString = ReplaceString(fullLaunchString, "${assets_root}", "assets")
                   fullLaunchString = ReplaceString(fullLaunchString, "${auth_uuid}", uuid)
                   fullLaunchString = ReplaceString(fullLaunchString, "${auth_access_token}", "00000000000000000000000000000000")
-                  fullLaunchString = ReplaceString(fullLaunchString, "${clientid}", "0000")
-                  fullLaunchString = ReplaceString(fullLaunchString, "${auth_xuid}", "0000")
                   fullLaunchString = ReplaceString(fullLaunchString, "${user_properties}", "{}")
                   fullLaunchString = ReplaceString(fullLaunchString, "${user_type}", "mojang")
                   fullLaunchString = ReplaceString(fullLaunchString, "${version_type}", "release")
@@ -427,26 +404,6 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
 
               CreateDirectoryRecursive("assets/indexes")
               ReceiveHTTPFile(GetJSONString(GetJSONMember(GetJSONMember(jsonObject, "assetIndex"), "url")), "assets/indexes/" + assetsIndex + ".json")
-
-              loggingMember = GetJSONMember(jsonObject, "logging")
-
-              If loggingMember
-                loggingClientMember = GetJSONMember(loggingMember, "client")
-
-                If loggingClientMember
-                  loggingFileMember = GetJSONMember(loggingClientMember, "file")
-
-                  If loggingFileMember
-                    logConfId = GetJSONString(GetJSONMember(loggingFileMember, "id"))
-                    logConfUrl = GetJSONString(GetJSONMember(loggingFileMember, "url"))
-                    logConfSize = GetJSONInteger(GetJSONMember(loggingFileMember, "size"))
-
-                    WriteStringN(listOfFiles, logConfUrl + "::" + "assets/log_configs/" + logConfId + "::" + logConfSize)
-
-                    CreateDirectoryRecursive("assets/log_configs")
-                  EndIf
-                EndIf
-              EndIf
 
               clientUrl = GetJSONString(GetJSONMember(GetJSONMember(GetJSONMember(jsonObject, "downloads"), "client"), "url"))
               clientSize = GetJSONInteger(GetJSONMember(GetJSONMember(GetJSONMember(jsonObject, "downloads"), "client"), "size"))
@@ -696,7 +653,7 @@ Procedure.s parseLibraries(clientVersion.s, prepareForDownload.i = 0)
 
   Protected.s libName, libsString, packFileName, url
   Protected.s jsonRulesOsName
-  Protected Dim libSplit.s(4)
+  Protected Dim libSplit.s(3)
 
   If prepareForDownload = 1
     downloadListFile = OpenFile(#PB_Any, tempDirectory + "vlauncher_download_list.txt")
@@ -740,16 +697,11 @@ Procedure.s parseLibraries(clientVersion.s, prepareForDownload.i = 0)
       If allowLib
         libName = GetJSONString(GetJSONMember(jsonArrayElement, "name"))
 
-        libSplit(4) = ""
-        For k = 1 To 4
+        For k = 1 To 3
           libSplit(k) = StringField(libName, k, ":")
         Next
 
         libName = ReplaceString(libSplit(1), ".", "/") + "/" + libSplit(2) + "/" + libSplit(3) + "/" + libSplit(2) + "-" + libSplit(3)
-
-        If libSplit(4)
-          libName + "-" + libSplit(4)
-        EndIf
 
         If prepareForDownload = 1
           jsonDownloadsMember = GetJSONMember(jsonArrayElement, "downloads")

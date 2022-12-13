@@ -74,23 +74,12 @@ DeleteFile(tempDirectory + "vlauncher_download_list.txt")
 
 RemoveEnvironmentVariable("_JAVA_OPTIONS")
 
-windowWidth = 250
-windowHeight = 250
+Global dpi.d = GetDeviceCaps_(GetDC_(0),#LOGPIXELSX)/100
 
-; added by ysmjp
-ExamineDesktops()
+windowWidth = 250 * dpi
+windowHeight = 250 * dpi
 
-Procedure TryToCenterTheWindow(window)
-  ; not 100% centered on Y axis because of titlebar
-  Protected xPos = (DesktopWidth(0) / 2) - (WindowWidth(window) / 2)
-  Protected yPos = (DesktopHeight(0) / 2) - (WindowHeight(window) / 2) 
-  
-  ResizeWindow(window, xPos, yPos, #PB_Ignore, #PB_Ignore)
-EndProcedure
-
-If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Minecraft Launcher")
-
-  TryToCenterTheWindow(0)
+If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Minecraft Launcher", #PB_Window_ScreenCentered | #PB_Window_SystemMenu)
   
   gadgetsWidth = windowWidth - 10
   gadgetsHeight = 25
@@ -120,7 +109,7 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
   If LoadFont(1, "Arial", 7)
     font = FontID(1) : SetGadgetFont(launcherAuthorGadget, font) : SetGadgetFont(launcherVersionGadget, font)
   EndIf
-
+  
   findInstalledVersions()
   findJava()
 
@@ -396,11 +385,10 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
             EndIf
           EndIf
         Case downloadButton
-          InitNetwork()
-
+          
           *FileBuffer = ReceiveHTTPMemory("https://launchermeta.mojang.com/mc/game/version_manifest.json")
           If *FileBuffer
-            If OpenWindow(1, #PB_Ignore, #PB_Ignore, 200, 120, "Client Downloader")
+            If OpenWindow(1, #PB_Ignore, #PB_Ignore, 200, 120, "Client Downloader", #PB_Window_ScreenCentered | #PB_Window_SystemMenu)
               DisableGadget(downloadButton, 1)
 
               ComboBoxGadget(325, 5, 5, 190, 25)
@@ -505,7 +493,7 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
         Case settingsButton
           DisableGadget(settingsButton, 1)
 
-          If OpenWindow(3, #PB_Ignore, #PB_Ignore, 335, 255, "Vortex Launcher Settings")
+          If OpenWindow(3, #PB_Ignore, #PB_Ignore, 335, 255, "Vortex Launcher Settings", #PB_Window_ScreenCentered | #PB_Window_SystemMenu)
               argsTextGadget = TextGadget(#PB_Any, 5, 5, 80, 30, "Launch parameters:")
               argsGadget = StringGadget(#PB_Any, 70, 5, 260, 25, ReadPreferenceString("LaunchArguments", customLaunchArgumentsDefault))
               GadgetToolTip(argsGadget, "These parameters will be used to launch Minecraft")
@@ -591,6 +579,8 @@ If OpenWindow(0, #PB_Ignore, #PB_Ignore, windowWidth, windowHeight, "Vortex Mine
 
           If IsGadget(playButton) : DisableGadget(playButton, 0) : EndIf
           If IsGadget(downloadVersionButton) : DisableGadget(downloadVersionButton, 0) : EndIf
+        Case javaListGadget
+          WritePreferenceString("SelectedJavaVersion", GetGadgetText(javaListGadget))
       EndSelect
     EndIf
 
@@ -867,8 +857,6 @@ Procedure downloadFiles(downloadAllFiles.i)
     If IsGadget(downloadVersionButton) : DisableGadget(downloadVersionButton, 1) : EndIf
     If IsGadget(progressBar) : SetGadgetAttribute(progressBar, #PB_ProgressBar_Maximum, linesTotal) : EndIf
 
-    InitNetwork()
-
     If asyncDownload
       While (Eof(file) = 0 Or currentDownloads > 0) And failedDownloads <= 5
         For i = 0 To downloadThreadsAmount
@@ -891,13 +879,13 @@ Procedure downloadFiles(downloadAllFiles.i)
                 lines - 1
               EndIf
             EndIf
-          ElseIf HTTPProgress(httpArray(i)) = #PB_Http_Success
+          ElseIf HTTPProgress(httpArray(i)) = #PB_HTTP_Success
             currentDownloads - 1
             lines - 1
 
             FinishHTTP(httpArray(i))
             httpArray(i) = 0
-          ElseIf HTTPProgress(httpArray(i)) = #PB_Http_Failed
+          ElseIf HTTPProgress(httpArray(i)) = #PB_HTTP_Failed
             FinishHTTP(httpArray(i))
 
             If retries(i) < allowedRetries
@@ -974,7 +962,7 @@ Procedure downloadFiles(downloadAllFiles.i)
 EndProcedure
 
 Procedure progressWindow(clientVersion.s)
-  progressWindow = OpenWindow(#PB_Any, #PB_Ignore, #PB_Ignore, 230, 85, "Download progress")
+  progressWindow = OpenWindow(#PB_Any, #PB_Ignore, #PB_Ignore, 230, 85, "Download progress", #PB_Window_ScreenCentered | #PB_Window_SystemMenu)
 
   If progressWindow
     downloadingClientTextGadget = TextGadget(#PB_Any, 5, 5, 220, 20, "Version: " + clientVersion)
@@ -1045,8 +1033,8 @@ Procedure.s fileRead(pathToFile.s)
 EndProcedure
 
 Procedure findJava()
-  Protected.s dirName, javaBinaryPath, customJavaPath
-  Protected.i i, directory
+  Protected.s dirName, javaBinaryPath, customJavaPath, selectedJavaVersion
+  Protected.i i, directory, count, selectedIndex
 
   ClearGadgetItems(javaListGadget)
   DisableGadget(javaListGadget, 0)
@@ -1060,6 +1048,9 @@ Procedure findJava()
     SetGadgetState(javaListGadget, 0)
     DisableGadget(javaListGadget, 1)
   Else
+    selectedJavaVersion = ReadPreferenceString("SelectedJavaVersion", "")
+    count = 0
+    selectedIndex = -1
     For i = 0 To 1
       If programFilesDir(i) <> "\"
         directory = ExamineDirectory(#PB_Any, programFilesDir(i) + "Java", "*")
@@ -1074,7 +1065,11 @@ Procedure findJava()
               EndIf
 
               AddGadgetItem(javaListGadget, -1, dirName)
-              SetGadgetState(javaListGadget, 0)
+              
+              If dirName = selectedJavaVersion
+                selectedIndex = count
+              EndIf
+              count = count + 1
             EndIf
           Wend
 
@@ -1082,6 +1077,12 @@ Procedure findJava()
         EndIf
       EndIf
     Next
+    
+    If selectedIndex <> -1
+      SetGadgetState(javaListGadget, selectedIndex)
+    Else
+      SetGadgetState(javaListGadget, 0)
+    EndIf
 
     If Not CountGadgetItems(javaListGadget)
       AddGadgetItem(javaListGadget, -1, "Java not found")
@@ -1132,3 +1133,11 @@ Procedure.s removeSpacesFromVersionName(clientVersion.s)
 
   ProcedureReturn newVersionName
 EndProcedure
+
+; IDE Options = PureBasic 6.00 LTS (Windows - x64)
+; CursorPosition = 1083
+; FirstLine = 1031
+; Folding = --
+; EnableXP
+; UseIcon = vlauncher.ico
+; Executable = VLauncher.exe
