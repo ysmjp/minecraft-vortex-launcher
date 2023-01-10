@@ -42,11 +42,7 @@ Define.i useCustomJavaDefault = 0
 Define.i useCustomParamsDefault = 0
 Define.i keepLauncherOpenDefault = 0
 
-<<<<<<< HEAD
-Define.s launcherVersion = "1.1.15"
-=======
 Define.s launcherVersion = "1.1.19"
->>>>>>> 2ca033c711089e976b98f6111d133ba41823cfcb
 Define.s launcherDeveloper = "Kron4ek"
 
 Declare assetsToResources(assetsIndex.s)
