@@ -3,6 +3,12 @@
 Fast, lightweight and easy to use Minecraft launcher. Natively available for Windows and Linux.
 
 ---
+## How to build
+using PureBasic to build
+
+## Change Log
+- center screen
+- added java version saving feature
 
 ## Features
 
